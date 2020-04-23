@@ -12,7 +12,10 @@ require_once("db_utility.class.php");
 include_once("/var/www/html/CZCRM/class_for_login_logout.php");
 require_once("request_manager.class.php");
 require_once('authenticate_api.php');
+
 $FLP = new logs_creation();
+$FLP->prepare_log("1",$_COOKIE['TICKET'],"cookie data is");
+$FLP->prepare_log("1",$_SESSION['USER_ID'],"session data is");
 $FLP->prepare_log("1",$_REQUEST["postData"],"Requested data is");
 $isBase64 = IsBase64($_REQUEST['postData']);
 if($isBase64)
@@ -24,13 +27,6 @@ else{
 }
 
 $FLP->prepare_log("1","Data received  is here",$data);
-if(isset($_COOKIE['PHPSESSID'])){
-    $FLP->prepare_log("1","=========COOKIE FOUND=============",$_COOKIE);
-    $SESS = new SESSION (true);
-    $FLP->prepare_log("1","=========SESSION CREATED==========",$_SESSION);
-}else{
-    $FLP->prepare_log("1","=========COOKIE NOT FOUND==========",$_COOKIE);
-}
 
 
 $FLP->prepare_log("1",$data,"JSON Data  is here");
@@ -41,7 +37,6 @@ $FLP->prepare_log("1",$arr_data,"Arr Data  is");
 $authResult=authApi($arr_data["reqType"]);
 $FLP->prepare_log("1",$authResult,"Auth Result");
 //$authResult=true;
-
 if($authResult===true){
 	if(!empty($arr_data["session_id1"]) && !empty($arr_data["user_id1"])){
 		$logEvent = new LOGIN_LOGOUT;
@@ -56,7 +51,9 @@ if($authResult===true){
 	$RH->handle_request();
 }
 else{
-  header($_SERVER['SERVER_PROTOCOL']." ".$authResult['statusCode']." ".$authResult['msg']);
-  exit;
+	$message = json_encode($authResult);
+	print $message;
+	header($_SERVER['SERVER_PROTOCOL']." ".$authResult['statusCode']." ".$authResult['msg']);
+	exit;
 }
 ?>

@@ -882,7 +882,7 @@ require_once ("/var/www/html/CZCRM/classes/function_log.class.php");
 		$configarr = json_decode($configArr,true);
 		$ticket_app_name = $configarr['TICKET_APP_NAME'];
 
-		$headers = array("X-CZApp: ".$ticket_app_name);
+		$headers = array("X-CZApp: ".$ticket_app_name,"Cookie: ".session_name()."=".session_id());
 		if(!empty($received_headers)){
 			$headers = array_merge($headers,$received_headers);
 		}
@@ -946,7 +946,7 @@ require_once ("/var/www/html/CZCRM/classes/function_log.class.php");
 		$configarr = json_decode($configArr,true);
 		$ticket_app_name = $configarr['TICKET_APP_NAME'];
 
-		$headers = array("X-CZApp: ".$ticket_app_name);
+		$headers = array("X-CZApp: ".$ticket_app_name,"Cookie: ".session_name()."=".session_id());
 		if(!empty($received_headers)){
 			$headers = array_merge($headers,$received_headers);
 		}
@@ -1715,9 +1715,41 @@ require_once ("/var/www/html/CZCRM/classes/function_log.class.php");
 			$getHostNamesArr	=	json_decode($getHostNamesJson, true);
 			$getHostNames		=	$getHostNamesArr['APP_SERVER'];
 				
+			$nonAccessableHost = array();
+			$accessableHost = '';
+			$isError = false;
 			foreach ($getHostNames as $hostname) {	
 				$URL = "http://$hostname/CZCRM/service_person_details.php?data=$dataJson";
 				$result_esc=do_remote_without_json($URL,"");
+				if($result_esc!=''){
+					$result_esc = trim($result_esc);
+					$RESULT = strip_tags($result_esc);
+					$RES = preg_replace("/[\n\r]/","",$RESULT); 
+					$NEWRES .= $RES.',';
+					$NEWRES = trim(trim($NEWRES),',');
+					if(!empty($NEWRES)){
+						array_push($nonAccessableHost, $hostname);
+						$isError = true;
+					}else{
+						$accessableHost = $hostname; 
+					}
+				}
+			}
+			if($isError && ($accessableHost!='')){
+				foreach($nonAccessableHost as $host){
+					$url = "http://%HOSTNAME%/CZCRM/service_person_details.php";
+					$post_data = $dataJson;
+					if(($host == 'localhost') || ($host == '127.0.0.1')){
+						$url_host = getHostName();
+					}else{
+						$url_host = $host;
+					}
+					$created_on = date('Y-m-d H:i:s');
+					$request_host= gethostname();
+					$error = 'server not accessable';
+					$query1 = "INSERT INTO `pending_requests` (module_name,url_host,url,post_data,request_host,error,created_on) VALUES ('service_person_details','".$url_host."','".$url."','".$post_data."','".$request_host."','".$error."','".$created_on."')";
+					$exe_query1 = $DB->EXECUTE_QUERY($query1,$DB_H);
+				}
 			}
 			$FLP->prepare_log("18",$e,"REDIS ERROR");
 		}
